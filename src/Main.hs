@@ -43,20 +43,23 @@ genMap lexicon =
 
 getChains :: [String] -> [(InputType, String)]
 getChains list =
-  zip (zipWith3 (\a b c -> [a,b,c])
-                (rotate 0 list)
-                (rotate 1 list)
-                (rotate 2 list))
-      (rotate 3 list)
+  let listRotations = [rotate n list | n <- [0 .. chainLength - 1]]
+  in zip (foldl (\acc sublist ->
+                   zipWith (++)
+                           acc
+                           (pure <$> sublist))
+                (pure <$> head listRotations)
+                (drop 1 listRotations))
+         (rotate chainLength list)
 
 rotate :: Int -> [a] -> [a]
 rotate n  l = case l of [] -> []; list -> let f = take n list in drop n list ++ f
 
 genString :: MarkovMap -> InputType -> IO String
-genString mMap input = go [input !! 2, input !! 1, input !! 0]
+genString mMap input = go $ reverse $ take chainLength input
   where go :: [String] -> IO String
         go acc = do
-          let newInput = reverse $ take 3 acc
+          let newInput = reverse $ take chainLength acc
           maybeMapping <- getMapping mMap newInput
           if | isNothing maybeMapping -> return $ unwords $ reverse acc
              | last (fromJust maybeMapping) == '.' -> return $ unwords $ reverse $ fromJust maybeMapping : acc
@@ -69,17 +72,20 @@ main =  withFile "lexicon.txt" ReadMode $ \h -> do
   markovMap <- if mapFileExists
                then do putStrLn "Reading cache.."
                        c <- BS.hGetContents =<< openFile "markov.cache" ReadMode
-                       let mMap =
-                             case decode c of
-                               Left e -> error e
-                               Right m -> m
-                       return mMap
-               else do putStrLn "Building map and writing cache.."
-                       let mMap = genMap lexiContents
-                       openFile "markov.cache" WriteMode >>= \h -> BS.hPut h (encode mMap)
-                       return mMap
+                       case decode c of
+                         Left e -> do putStrLn "couldn't read cache, rebuilding"
+                                      buildMap lexiContents
+                         Right m -> return m
+               else buildMap lexiContents
   putStrLn "loading done. please type"
   forever $ do
     c <- getLine
     let ws = words c
-    print =<< genString markovMap (take 3 ws)
+    print =<< genString markovMap (take chainLength ws)
+
+      where buildMap c = do putStrLn "Building map and writing cache.."
+                            let mMap = genMap c
+                            openFile "markov.cache" WriteMode >>= \h -> BS.hPut h (encode mMap)
+                            return mMap
+
+chainLength = 2
