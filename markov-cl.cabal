@@ -23,3 +23,4 @@ executable markov-cl
                      , directory
                      , cereal
                      , bytestring
+  ghc-options: -O2 -fwarn-unused-imports

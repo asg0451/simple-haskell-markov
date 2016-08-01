@@ -5,8 +5,6 @@ import Control.Monad
 import qualified Data.Map.Lazy as M
 import System.Random (randomRIO)
 import System.IO
-import Data.List.Split
-import Data.List (last)
 import Data.Maybe (fromJust, isNothing)
 import qualified Data.Set as S
 
@@ -77,7 +75,7 @@ main =  withFile "lexicon.txt" ReadMode $ \h -> do
                                       buildMap lexiContents
                          Right m -> return m
                else buildMap lexiContents
-  putStrLn "loading done. please type"
+  putStrLn $ "loading done. please type " ++ show chainLength ++ " words"
   forever $ do
     c <- getLine
     let ws = words c
@@ -88,4 +86,4 @@ main =  withFile "lexicon.txt" ReadMode $ \h -> do
                             openFile "markov.cache" WriteMode >>= \h -> BS.hPut h (encode mMap)
                             return mMap
 
-chainLength = 2
+chainLength = 3
