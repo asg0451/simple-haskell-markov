@@ -1,4 +1,4 @@
 dist/
 .stack-work/
-markov.cache
+*.cache
 *.prof
