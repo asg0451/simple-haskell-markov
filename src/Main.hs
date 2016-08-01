@@ -9,6 +9,10 @@ import Data.List (last)
 import Data.Maybe (fromJust, isNothing)
 import qualified Data.Set as S
 
+import System.Directory (doesFileExist)
+import qualified Data.ByteString as BS
+import Data.Serialize
+
 type MarkovMap = M.Map InputTuple (S.Set String)
 type InputTuple = (String, String)
 
@@ -44,7 +48,6 @@ rotate n  l = case l of [] -> []; list -> let f = take n list in drop n list ++ 
 
 genString :: MarkovMap -> InputTuple -> IO String
 genString mMap input = go [snd input, fst input]
-  -- build result backwards for efficiency
   where go :: [String] -> IO String
         go acc = do
           let newInput = (acc !! 1, acc !! 0)
@@ -54,7 +57,21 @@ genString mMap input = go [snd input, fst input]
             else go $ fromJust maybeMapping : acc
 
 main :: IO ()
-main = withFile "lexicon.txt" ReadMode $ \h -> do
-  contents <- hGetContents h
-  let markovMap = genMap contents
-  print =<< genString markovMap ("And", "he")
+main = do
+  withFile "lexicon.txt" ReadMode $ \h -> do
+    lexiContents <- hGetContents h
+    mapFileExists <- doesFileExist "markov.cache"
+    markovMap <- if mapFileExists
+                 then do putStrLn "Reading Cache.."
+                         c <- BS.hGetContents =<< openFile "markov.cache" ReadMode
+                         let mMap =
+                               case decode c of
+                                 Left e -> error e
+                                 Right m -> m
+                         return mMap
+                 else do putStrLn "Writing cache.."
+                         let mMap = genMap lexiContents
+                         openFile "markov.cache" WriteMode >>= \h -> BS.hPut h (encode mMap)
+                         return mMap
+    putStrLn "shit built"
+    print =<< genString markovMap ("And", "he")

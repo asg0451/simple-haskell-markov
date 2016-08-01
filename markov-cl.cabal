@@ -20,3 +20,6 @@ executable markov-cl
                      , containers
                      , random
                      , split
+                     , directory
+                     , cereal
+                     , bytestring
