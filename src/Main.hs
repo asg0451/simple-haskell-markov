@@ -9,19 +9,19 @@ import Data.List (last)
 import Data.Maybe (fromJust, isNothing)
 import qualified Data.Set as S
 
-type MarkovMap = M.Map InputTuple [String]
+type MarkovMap = M.Map InputTuple (S.Set String)
 type InputTuple = (String, String)
 
 getMapping :: MarkovMap -> InputTuple -> IO (Maybe String)
 getMapping mMap input = do
-  let maybeResult = M.lookup input mMap :: Maybe [String]
+  let maybeResult = M.lookup input mMap
   case maybeResult of
     Nothing -> return Nothing
     Just res -> sample res
 
-sample :: [a] -> IO (Maybe a)
-sample [] = return Nothing
-sample list  = randomRIO (0, length list - 1) >>= return . Just . (list !!)
+sample :: S.Set a -> IO (Maybe a)
+sample list = if S.null list then return Nothing
+              else randomRIO (0, length list - 1) >>= return . Just . (\i -> S.elemAt i list)
 
 genMap :: String -> MarkovMap
 genMap lexicon =
@@ -31,8 +31,8 @@ genMap lexicon =
               let key = fst v
                   val = snd v
               in if M.member key acc
-                    then M.adjust (\list -> list ++ [val]) key acc
-                    else M.insert key [val] acc)
+                    then M.adjust (\set -> S.union set (S.singleton val)) key acc
+                    else M.insert key (S.singleton val) acc)
            M.empty
            chains
 
